@@ -11,4 +11,6 @@ install:
     - conda activate snakemake-mcl-cluster
     - mamba install -c conda-forge -c bioconda --yes --file requirements.txt
 script:
-    - snakemake --dry-run --printshellcmds --jobs 5 --configfile params.yaml --directory output/
+    - snakemake --printshellcmds --jobs 5 --configfile params.yml --directory output/
+    - ls -l output/mcl/cluster_summary.tsv
+    - ls -l output/mcl/Pearson_0.6/I_1.4/ceilnb_100/cluster.tsv
