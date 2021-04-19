@@ -1,0 +1,14 @@
+language: python
+python:
+    - "3.6"
+install:
+    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - source "$HOME/miniconda/etc/profile.d/conda.sh"
+    - conda info -a
+    - conda install -c conda-forge --yes mamba
+    - conda create --yes -n snakemake-mcl-cluster
+    - conda activate snakemake-mcl-cluster
+    - mamba install -c conda-forge --yes --file requirements.txt
+script:
+    - snakemake --dry-run --printshellcmds --jobs 5 --configfile params.yaml --directory output/
