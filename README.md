@@ -1,9 +1,13 @@
+[![Build Status](https://travis-ci.com/dariober/snakemake-mcl-cluster.svg?branch=master)](https://travis-ci.com/dariober/snakemake-mcl-cluster)
+[![Language](http://img.shields.io/badge/language-snakemake-brightgreen.svg)](https://www.java.com/)
+[![License](http://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dariober/snakemake-mcl-cluster)
+
 <!-- vim-markdown-toc GFM -->
 
 * [Description & Motivation](#description--motivation)
+* [Installation](#installation)
 * [Input](#input)
 * [Output](#output)
-* [Installation](#installation)
 * [Execution](#execution)
 * [Markov Clustering Algorithm](#markov-clustering-algorithm)
 
@@ -21,7 +25,7 @@ affect the clustering results.
 
 `snakemake-mcl-cluster` executes all the pre-processing and clustering steps to
 a given input data file by applying all combinations of parameters given in
-`params.yaml`. At the present these are:
+`params.yml`. At the present these are:
 
 * `pearson_r_cutoff: [0.6, 0.75, 0.9]`: Reset to 0 correlations below this
   cutoff. Cutoffs closer to 1 favour many clusters of small size, possibly
@@ -52,6 +56,25 @@ gene expression but there is nothing specific to gene expression analysis.
 The `Snakefile` is the core of this pipeline and it should be readable even if
 you don't use [snakemake](https://snakemake.readthedocs.io/en/stable/). 
 
+# Installation
+
+`requirements.txt` contains the list of dependencies with their versions. Using
+these exact programs versions is probably not necessary.
+
+The easiest way to install the dependencies is via
+[conda/bioconda](https://bioconda.github.io/user/install.html). Consider using
+[mamba install](https://github.com/mamba-org/mamba) instead of `conda install`.
+
+This will create a dedicated environment with all the dependencies:
+
+```
+conda create --yes -n snakemake-mcl-cluster
+conda activate snakemake-mcl-cluster
+mamba install --yes -n snakemake-mcl-cluster --file requirements.txt --freeze-installed
+```
+
+Alternatively, install the required programs using your favourite method.
+
 # Input
 
 The only input is a matrix where rows are vectors of observations (e.g. genes)
@@ -81,7 +104,7 @@ accompanying this repository. *NB* I'm not sure if this input data contains
 clusters or if mcl with these settings is the best approach.
 
 This table is sorted by `pct_genes_regular` so that the first rows are the
-combinations favouring clusters of "regular" size (see `params.yaml`). Note
+combinations favouring clusters of "regular" size (see `params.yml`). Note
 that depending on the choice of parameters you can obtain many tiny clusters or
 few big ones.
 
@@ -92,7 +115,7 @@ Columns are:
 * `n_clusters`: Number of clusters
 
 * `pct_genes_regular`: % of genes (or whatever you are clustering) in clusters
-  of "regular" size, i.e. between 15 and 200 (see `params.yaml` to adjust).
+  of "regular" size, i.e. between 15 and 200 (see `params.yml` to adjust).
   Typically you hope for most/many genes to be these clusters of manageable
   size and number
 
@@ -172,34 +195,15 @@ plausible and useful.
     corr inflation ceilnb n_clusters pct_genes_regular pct_genes_bigk pct_genes_smallk
 ```
 
-# Installation
-
-`requirements.txt` contains the list of dependencies with their versions. Using
-these exact programs versions is probably not necessary.
-
-The easiest way to install the dependencies is via
-[conda/bioconda](https://bioconda.github.io/user/install.html). Consider using
-[mamba install](https://github.com/mamba-org/mamba) instead of `conda install`.
-
-This will create a dedicated environment with all the dependencies:
-
-```
-conda create --yes -n snakemake-mcl-cluster
-conda activate snakemake-mcl-cluster
-mamba install --yes -n snakemake-mcl-cluster --file requirements.txt --freeze-installed
-```
-
-Alternatively, install the required programs using your favourite method.
-
 # Execution
 
-Edit `params.yaml` to specify the input file of gene expression and the lists
+Edit `params.yml` to specify the input file of gene expression and the lists
 of parameters. Then run the pipeline with:
 
 ```
 snakemake --dry-run --printshellcmds \
     --jobs 5 \
-    --configfile params.yaml \
+    --configfile params.yml \
     --directory output/
 ```
 

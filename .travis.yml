@@ -9,6 +9,6 @@ install:
     - conda install -c conda-forge --yes mamba
     - conda create --yes -n snakemake-mcl-cluster
     - conda activate snakemake-mcl-cluster
-    - mamba install -c conda-forge --yes --file requirements.txt
+    - mamba install -c conda-forge -c bioconda --yes --file requirements.txt
 script:
     - snakemake --dry-run --printshellcmds --jobs 5 --configfile params.yaml --directory output/
