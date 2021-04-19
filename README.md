@@ -250,7 +250,7 @@ for example a matrix of Person correlation coefficients between genes:
 This is the effect of the inflation factors on a vector of input transition
 probabilities:
 
-<img src="figures/inflation_effect.png" width="200"/>
+<img src="figures/inflation_effect.png" width="400"/>
 
 ```
 R
