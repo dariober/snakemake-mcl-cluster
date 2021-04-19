@@ -1,0 +1,23 @@
+# Input matrix of gene expressions to clusters. Columns are samples and rows
+# are genes. First row is header and first column is gene ID.
+#
+data_matrix: ../data/logrpkm.tsv
+
+# Lists of paramaters values:
+#
+pearson_r_cutoff: [0.6, 0.75, 0.9]
+inflation: [1.4, 1.6, 1.8, 2, 4]
+ceilnb: [50, 100, 500, 10000]
+
+# Parameters for summary statistics - these do not affect clustering
+#
+# Clusters of size within the interval "regular_size" are those you consider
+# interesting because not too big or too small
+#
+regular_size: [15, 200]
+
+# Consider "small" clusters with these or fewer genes
+small_size: 3
+
+# Number of top (biggest) clusters to compute the pct_genes_bigk statistics
+top_big: 3

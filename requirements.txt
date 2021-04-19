@@ -1,0 +1,3 @@
+snakemake =6.1.1
+mcl =14.137
+r-data.table =1.14.0
