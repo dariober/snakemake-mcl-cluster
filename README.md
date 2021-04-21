@@ -7,8 +7,8 @@
 * [Description & Motivation](#description--motivation)
 * [Installation](#installation)
 * [Input](#input)
-* [Output](#output)
 * [Execution](#execution)
+* [Output](#output)
 * [Markov Clustering Algorithm](#markov-clustering-algorithm)
 
 <!-- vim-markdown-toc -->
@@ -17,15 +17,22 @@
 
 This pipeline performs Markov clustering via
 [mcl](https://micans.org/mcl/index.html) on an array of parameters values and
-reports summary statistics for each combination of parameters. 
+reports summary statistics for each combination of settings. In this way it
+is easy, hopefully, to:
+
+* Perfom clustering from start to finish in a streamlined but customisable way
+
+* Choose the optimal parameter settings
+
 
 Although mcl clustering has virtually only one parameter to tweak - the
 inflation factor - there are several pre- and post-processing parameters that
 affect the clustering results.
 
-`snakemake-mcl-cluster` executes all the pre-processing and clustering steps to
-a given input data file by applying all combinations of parameters given in
-`params.yml`. At the present these are:
+---
+
+At the present these below are the parameters that be varied. Additional or
+different ones could be included by editing the Snakefile.
 
 * `pearson_r_cutoff: [0.6, 0.75, 0.9]`: Reset to 0 correlations below this
   cutoff. Cutoffs closer to 1 favour many clusters of small size, possibly
@@ -50,10 +57,7 @@ taking a long time to complete may be an indication that the selected
 parameters are unsuitable. However, since **all** combinations of parameters
 are tested, the number of executions grows very fast.
 
-I have prepared `snakemake-mcl-cluster` for clustering
-gene expression but there is nothing specific to gene expression analysis.
-
-The `Snakefile` is the core of this pipeline and it should be readable even if
+The `Snakefile` is the core of the pipeline and it should be readable even if
 you don't use [snakemake](https://snakemake.readthedocs.io/en/stable/). 
 
 # Installation
@@ -65,7 +69,8 @@ The easiest way to install the dependencies is via
 [conda/bioconda](https://bioconda.github.io/user/install.html). Consider using
 [mamba install](https://github.com/mamba-org/mamba) instead of `conda install`.
 
-This will create a dedicated environment with all the dependencies:
+You may want to create a dedicated environment with all the dependencies,
+although this is not necessary.
 
 ```
 conda create --yes -n snakemake-mcl-cluster
@@ -83,6 +88,37 @@ gene expression matrix where expression is log2(RPKM) from RNAseq. If
 interested, the file `counts.tsv.gz` has the raw counts. Note that it may or
 may not be sensible to cluster this dataset.
 
+I have prepared `snakemake-mcl-cluster` for clustering gene expression but
+there is nothing specific to gene expression analysis in this workflow.
+
+# Execution
+
+Edit `params.yml` to specify the input file of gene expression and the lists
+of parameters. Then run the pipeline with:
+
+```
+snakemake --dry-run --printshellcmds \
+    --jobs 5 \
+    --configfile params.yml \
+    --directory ./
+```
+
+This should run using the example data included in this repository.
+
+`--dry-run`: Only show would would be done - remove this option for actual execution
+
+`--printshellcmds`: Show the shell commands as they are executed
+
+`--jobs`: Number of jobs to run in parallel - edit as appropriate
+
+`--directory`: Change to this directory and write output here. Created if it does not exist
+
+`--config`: Configuration file
+
+There are several intermediate files that are automatically deleted. To keep
+these files add the `--notemp` option to snakemake or edit the Snakefile to
+remove the `temp()` function around the intermediate files to keep.
+
 # Output
 
 The pipeline output is: 
@@ -90,8 +126,11 @@ The pipeline output is:
 * `cluster_summary.tsv`: A table of cluster characteristics for each combination of parameter values
   that should help deciding the optimal combination
 
-* `/Pearson_{r}/I_{i}/ceilnb_{nb}/cluster.tsv`: For each combination of parameters, a cluster file ready to use for further
-  analyses
+* `distance_between_clusters.tsv`: Table of metrics for the consistency between
+  clusters for each pair of parameter settings
+
+* `/Pearson_{r}/I_{i}/ceilnb_{nb}/cluster.tsv`: For each combination of
+  parameters, a cluster file ready for further analyses
 
 * `similarity_matrix.tsv.gz`: The similarity matrix produced from the input
   data. Unless you changed the `mcxarray` command, this is the correlation
@@ -194,34 +233,6 @@ plausible and useful.
 60: 0.60       1.4    100          8               0.7           90.6              0.0
     corr inflation ceilnb n_clusters pct_genes_regular pct_genes_bigk pct_genes_smallk
 ```
-
-# Execution
-
-Edit `params.yml` to specify the input file of gene expression and the lists
-of parameters. Then run the pipeline with:
-
-```
-snakemake --dry-run --printshellcmds \
-    --jobs 5 \
-    --configfile params.yml \
-    --directory output/
-```
-
-This should run using the example data included in this repository.
-
-`--dry-run`: Only show would would be done - remove this option for actual execution
-
-`--printshellcmds`: Show the shell commands as they are executed
-
-`--jobs`: Number of jobs to run in parallel - edit as appropriate
-
-`--directory`: Change to this directory and write output here. Created if it does not exist
-
-`--config`: Configuration file
-
-There are several intermediate files that are automatically deleted. To keep
-these files add the `--notemp` option to snakemake or edit the Snakefile to
-remove the `temp()` function around the intermediate files to keep.
 
 # Markov Clustering Algorithm
 

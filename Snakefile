@@ -9,6 +9,7 @@ rule all:
         expand('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv', 
                 pearson_r= pearson_r_cutoff, inflation= inflation, ceilnb= ceilnb),
         'mcl/cluster_summary.tsv',
+        'mcl/distance_between_clusters.tsv',
         
 
 rule make_mcl_network:
@@ -60,9 +61,51 @@ rule cluster_network:
         selected_ntwk= 'mcl/Pearson_{pearson_r}/selected_network.mci',
     output:
         clst= temp('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci'),
+    params:
+        nt= config['n_threads']
     shell:
         r"""
-        mcl {input.selected_ntwk} -o {output.clst} -I {wildcards.inflation} -te 8 -tf '#ceilnb({wildcards.ceilnb})'
+        mcl {input.selected_ntwk} -o {output.clst} -I {wildcards.inflation} -te {params.nt} -tf '#ceilnb({wildcards.ceilnb})'
+        """
+
+rule distance_between_clusters:
+    input:
+        clst= expand('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci', 
+                pearson_r= pearson_r_cutoff, inflation= inflation, ceilnb= ceilnb),
+    output:
+        dist= 'mcl/distance_between_clusters.tsv',
+    shell:
+        r"""
+cat <<'EOF' > {rule}.$$.tmp.R
+
+library(data.table)
+
+dists <- fread(cmd= 'clm dist --sort --index {input.clst}', header= FALSE, col.names= c('rand_index', 'jaccard_index', 'adjusted_rand_index', 'n1', 'n2'))
+stopifnot(grepl('^rand=', dists$rand_index))
+stopifnot(grepl('^jaccard=', dists$jaccard_index))
+stopifnot(grepl('^arand=', dists$adjusted_rand_index))
+
+dists[, rand_index := sub('^rand=', '', rand_index)]
+dists[, jaccard_index := sub('^jaccard=', '', jaccard_index)]
+dists[, adjusted_rand_index := sub('^arand=', '', adjusted_rand_index)]
+dists[, n1 := sub('^n1=', '', n1)]
+dists[, n2 := sub('^n2=', '', n2)]
+
+dists[, corr_n1 := as.numeric(sub('/.*', '', sub('.*Pearson_', '', n1)))]
+dists[, inflation_n1 := as.numeric(sub('/.*', '', sub('.*I_', '', n1)))]
+dists[, ceilnb_n1 := as.numeric(sub('/.*', '', sub('.*ceilnb_', '', n1)))]
+
+dists[, corr_n2 := as.numeric(sub('/.*', '', sub('.*Pearson_', '', n2)))]
+dists[, inflation_n2 := as.numeric(sub('/.*', '', sub('.*I_', '', n2)))]
+dists[, ceilnb_n2 := as.numeric(sub('/.*', '', sub('.*ceilnb_', '', n2)))]
+
+setcolorder(dists, c('corr_n1', 'corr_n2', 'inflation_n1', 'inflation_n2', 'ceilnb_n1', 'ceilnb_n2'))
+
+write.table(dists, '{output.dist}', row.names= FALSE, sep= '\t', quote= FALSE)
+
+EOF
+Rscript {rule}.$$.tmp.R
+rm {rule}.$$.tmp.R
         """
 
 rule dump_clusters:
