@@ -1,23 +1,107 @@
-pearson_r_cutoff = config['pearson_r_cutoff']
-inflation = config['inflation']
-ceilnb = config['ceilnb']
+defaults = {'mcl_output_dir': 'mcl', 'pearson_r_cutoff': [0.6, 0.8], 'inflation': [1.4, 2], 'ceilnb': [10000], 'n_threads': 1, 'regular_size': [15, 200], 'small_size': 3, 'top_big': 3}
+help_doc = r"""
+USAGE
+snakemake -C [option=value] [option=value] ...
 
-rule all:
+OPTIONS and DEFAULTS
+
+==== Input/Output ====
+
+data_matrix
+    Input data matrix. First row is header and first column is feature
+    identifier. For example, a data matrix to cluster genes has one row per
+    gene and one column per sample. Required.
+
+mcl_output_dir={mcl_output_dir} 
+    Write output in this directory. Created if it does not exists. 
+
+====  Clustering ====
+
+pearson_r_cutoff='{pearson_r_cutoff}'
+    List correlation cutoffs. Reset to 0 correlations below this cutoff
+
+inflation='{inflation}'
+    List of inflations for MCL clustering
+
+ceilnb='{ceilnb}'
+    List of 'ceilnb' value. Nodes will be pruned if they exceed this many
+    connections
+
+==== Summary and performance ====
+
+regular_size='{regular_size}'
+    List of length 2. Consider as "regular" clusters within this size interval
+
+small_size='{small_size}'
+    Consider "small" cluster of this or lower size. Useful to assess whether
+    the clustering is over-fragmented
+
+top_big='{top_big}'
+    Number of top/biggest clusters. Useful to assess whether few big clusters
+    attract most of the features
+
+n_threads=1
+    Number of threads for steps allowing multithreading
+
+help=1
+    Show this help
+
+EXAMPLES
+
+Cluster testing all combination of 2 cutoffs for correlation, 2 of ceilnb, and
+1 inflation:
+
+    snakemake --jobs 5 -C data_matrix=data/logrpkm.tsv \
+                          pearson_r_cutoff='[0.6, 0.8]' \
+                          ceilnb='[100, 200]' \
+                          inflation='[1.4]'
+
+Show this help:
+
+    snakemake --jobs 5 -C help=1
+""".format(**defaults)
+
+if 'help' in config:
+    print(help_doc)
+    sys.exit(0)
+
+if 'data_matrix' not in config:
+    raise OSError('''\nPlease specify the input data matrix for MCL clustering. E.g:\n
+    snakemake -C data_matrix=my-matrix.txt ...\n''')
+if 'mcl_output_dir' not in config:
+    config['mcl_output_dir'] = defaults['mcl_output_dir']
+if 'pearson_r_cutoff' not in config:
+    config['pearson_r_cutoff'] = defaults['pearson_r_cutoff']
+if 'inflation' not in config:
+    config['inflation'] = defaults['inflation']
+if 'ceilnb' not in config:
+    config['ceilnb'] = defaults['ceilnb']
+if 'regular_size' not in config:
+    config['regular_size'] = defaults['regular_size']
+if 'small_size' not in config:
+    config['small_size'] = defaults['small_size']
+if 'top_big' not in config:
+    config['top_big'] = defaults['top_big']
+if 'n_threads' not in config:
+    config['n_threads'] = defaults['n_threads']
+ 
+mcl_output_dir = config['mcl_output_dir']
+
+rule mcl_all:
     input:
-        'mcl/similarity_matrix.tsv.gz',
-        'mcl/vary_correlation_query.txt',
-        expand('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv', 
-                pearson_r= pearson_r_cutoff, inflation= inflation, ceilnb= ceilnb),
-        'mcl/cluster_summary.tsv',
-        'mcl/distance_between_clusters.tsv',
+        f'{mcl_output_dir}/similarity_matrix.tsv.gz',
+        f'{mcl_output_dir}/vary_correlation_query.txt',
+        expand(os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv'),
+                pearson_r= config['pearson_r_cutoff'], inflation= config['inflation'], ceilnb= config['ceilnb']),
+        f'{mcl_output_dir}/cluster_summary.tsv',
+        f'{mcl_output_dir}/distance_between_clusters.tsv',
         
-
 rule make_mcl_network:
     input:
         mat= config['data_matrix'],
     output:
-        network= temp('mcl/network.mci'),
-        gene_dict= temp('mcl/gene_dict.txt'),
+        network= temp(f'{mcl_output_dir}/network.mci'),
+        gene_dict= temp(f'{mcl_output_dir}/gene_dict.txt'),
     shell:
         r"""
         mcxarray -data {input.mat} -skipr 1 -skipc 1 -o {output.network} \
@@ -26,10 +110,10 @@ rule make_mcl_network:
 
 rule write_similarity_matrix:
     input:
-        network= 'mcl/network.mci',
-        gene_dict= 'mcl/gene_dict.txt',
+        network= f'{mcl_output_dir}/network.mci',
+        gene_dict= f'{mcl_output_dir}/gene_dict.txt',
     output:
-        matrix= 'mcl/similarity_matrix.tsv.gz',
+        matrix= f'{mcl_output_dir}/similarity_matrix.tsv.gz',
     shell:
         r"""
         mcxdump -imx {input.network} -tab {input.gene_dict} --dump-upper | gzip > {output.matrix}
@@ -37,9 +121,9 @@ rule write_similarity_matrix:
 
 rule query_mcl_network:
     input:
-        network= 'mcl/network.mci',
+        network= f'{mcl_output_dir}/network.mci',
     output:
-        qry= 'mcl/vary_correlation_query.txt',
+        qry= f'{mcl_output_dir}/vary_correlation_query.txt',
     shell:
         r"""
         mcx query -imx {input.network} --vary-correlation -o {output.qry}
@@ -47,9 +131,9 @@ rule query_mcl_network:
 
 rule select_mcl_network:
     input:
-        network= 'mcl/network.mci',
+        network= f'{mcl_output_dir}/network.mci',
     output:
-        selected_ntwk= temp('mcl/Pearson_{pearson_r}/selected_network.mci'),
+        selected_ntwk= temp(os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/selected_network.mci')),
     shell:
         r"""
         mcx alter -imx {input.network} -tf 'gq({wildcards.pearson_r}), add(-{wildcards.pearson_r})' \
@@ -58,9 +142,9 @@ rule select_mcl_network:
 
 rule cluster_network:
     input:
-        selected_ntwk= 'mcl/Pearson_{pearson_r}/selected_network.mci',
+        selected_ntwk= os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/selected_network.mci'),
     output:
-        clst= temp('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci'),
+        clst= temp(os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci')),
     params:
         nt= config['n_threads']
     shell:
@@ -70,10 +154,10 @@ rule cluster_network:
 
 rule distance_between_clusters:
     input:
-        clst= expand('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci', 
-                pearson_r= pearson_r_cutoff, inflation= inflation, ceilnb= ceilnb),
+        clst= expand(os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci'), 
+                pearson_r= config['pearson_r_cutoff'], inflation= config['inflation'], ceilnb= config['ceilnb']),
     output:
-        dist= 'mcl/distance_between_clusters.tsv',
+        dist= os.path.join(mcl_output_dir, 'distance_between_clusters.tsv'),
     shell:
         r"""
 cat <<'EOF' > {rule}.$$.tmp.R
@@ -110,10 +194,10 @@ rm {rule}.$$.tmp.R
 
 rule dump_clusters:
     input:
-        clst= 'mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci',
-        gene_dict= 'mcl/gene_dict.txt',
+        clst= os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.mci'),
+        gene_dict= os.path.join(mcl_output_dir, 'gene_dict.txt'),
     output:
-        clst= 'mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv',
+        clst= os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv'),
     shell:
         r"""
         mcxdump -icl {input.clst} --dump-pairs -o {output.clst} -tabr {input.gene_dict}
@@ -121,10 +205,10 @@ rule dump_clusters:
 
 rule summarise_clusters:
     input:
-        clst= expand('mcl/Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv', 
-                pearson_r= pearson_r_cutoff, inflation= inflation, ceilnb= ceilnb),
+        clst= expand(os.path.join(mcl_output_dir, 'Pearson_{pearson_r}/I_{inflation}/ceilnb_{ceilnb}/cluster.tsv'), 
+                pearson_r= config['pearson_r_cutoff'], inflation= config['inflation'], ceilnb= config['ceilnb']),
     output:
-        smry= 'mcl/cluster_summary.tsv',
+        smry= os.path.join(mcl_output_dir, 'cluster_summary.tsv'),
     params:
         regular_size= config['regular_size'],
         small_size= config['small_size'],
