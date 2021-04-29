@@ -1,9 +1,19 @@
-config['data_matrix'] = 'data/data_matrix.tsv'
-config['mcl_output_dir'] = 'test_out/mcl'
-config['inflation'] = [1.4, 2]
+config['inflation'] = [1.4, 2.0]
+
+samples = ['sample_1', 'sample_2']
 
 rule all:
     input:
-        'test_out/mcl/cluster_summary.tsv',
+        expand('test_out/{sample}/cluster_summary.tsv', sample= samples),
+
+rule make_data_matrix:
+    input:
+        mat= 'data/data_matrix.tsv',
+    output:
+        mat= 'test_out/{sample}/data_matrix.tsv',
+    shell:
+        r"""
+        cp {input.mat} {output.mat}
+        """
 
 include: '../workflows/mcl.smk'

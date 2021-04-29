@@ -10,6 +10,7 @@
 * [Execution](#execution)
 * [Output](#output)
 * [Markov Clustering Algorithm](#markov-clustering-algorithm)
+* [Developer memo](#developer-memo)
 
 <!-- vim-markdown-toc -->
 
@@ -23,7 +24,6 @@ is easy, hopefully, to:
 * Perfom clustering from start to finish in a streamlined but customisable way
 
 * Choose the optimal parameter settings
-
 
 Although mcl clustering has virtually only one parameter to tweak - the
 inflation factor - there are several pre- and post-processing parameters that
@@ -296,4 +296,11 @@ gg <- ggplot(data= dat, aes(x= input_prob, y= output_prob, colour= inflation, gr
     ggtitle('Effect of inflation factor on transition probabilities')
 ggsave('figures/inflation_effect.png', width= 14, height= 10, units= 'cm')
 ```
+
+Developer memo
+==============
+
+Remember to update the string variable `GITHUB_REPOSITORY` with the appropriate
+sha when pushing changes to repository.
+
 

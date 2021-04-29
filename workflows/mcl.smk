@@ -22,32 +22,12 @@ if 'top_big' not in config:
 if 'n_threads' not in config:
     config['n_threads'] = 1
 
-if 'data_matrix' not in config:
-    raise OSError(r"""Please specify the input data matrix for MCL clustering with:
-
-            config['data_matrix'] = 'my-data-matrix.txt'
-
-            or
-
-            snakemake -C data_matrix=my-data-matrix.txt ...
-            """)
-
-if 'mcl_output_dir' not in config:
-    raise OSError(r"""\nPlease specify the output directory for MCL clustering with:
-
-            config['mcl_output_dir'] = 'my-mcl-output'
-
-            or
-
-            snakemake -C mcl_output_dir=my-mcl-output ...
-            """)
-
 rule make_mcl_network:
     input:
-        mat= config['data_matrix'],
+        mat= os.path.join('{mcl_output_dir}', 'data_matrix.tsv'),
     output:
-        network= temp(os.path.join(config['mcl_output_dir'], 'network.mci')),
-        gene_dict= temp(os.path.join(config['mcl_output_dir'], 'gene_dict.txt')),
+        network= os.path.join('{mcl_output_dir}', 'network.mci'),
+        gene_dict= os.path.join('{mcl_output_dir}', 'gene_dict.txt'),
     params:
         n_threads= config['n_threads'],
         edge_weight= config['edge_weight']
@@ -59,30 +39,30 @@ rule make_mcl_network:
 
 rule write_similarity_matrix:
     input:
-        network= os.path.join(config['mcl_output_dir'], 'network.mci'),
-        gene_dict= os.path.join(config['mcl_output_dir'], 'gene_dict.txt'),
+        network= os.path.join('{mcl_output_dir}', 'network.mci'),
+        gene_dict= os.path.join('{mcl_output_dir}', 'gene_dict.txt'),
     output:
-        matrix= os.path.join(config['mcl_output_dir'], 'similarity_matrix.tsv.gz'),
+        matrix= os.path.join('{mcl_output_dir}', 'similarity_matrix.tsv.gz'),
     shell:
         r"""
         mcxdump -imx {input.network} -tab {input.gene_dict} --dump-upper | gzip > {output.matrix}
         """
 
-rule query_mcl_network:
-    input:
-        network= os.path.join(config['mcl_output_dir'], 'network.mci'),
-    output:
-        qry= os.path.join(config['mcl_output_dir'], 'vary_correlation_query.txt'),
-    shell:
-        r"""
-        mcx query -imx {input.network} --vary-correlation -o {output.qry}
-        """
+# rule query_mcl_network:
+#     input:
+#         network= os.path.join('{mcl_output_dir}', 'network.mci'),
+#     output:
+#         qry= os.path.join('{mcl_output_dir}', 'vary_correlation_query.txt'),
+#     shell:
+#         r"""
+#         mcx query -imx {input.network} --vary-correlation -o {output.qry}
+#         """
 
 rule select_mcl_network:
     input:
-        network= os.path.join(config['mcl_output_dir'], 'network.mci'),
+        network= os.path.join('{mcl_output_dir}', 'network.mci'),
     output:
-        selected_ntwk= temp(os.path.join(config['mcl_output_dir'], 'correlation_{r}/selected_network.mci')),
+        selected_ntwk= os.path.join('{mcl_output_dir}', 'correlation_{r}/selected_network.mci'),
     shell:
         r"""
         mcx alter -imx {input.network} -tf 'gq({wildcards.r}), add(-{wildcards.r})' \
@@ -91,9 +71,9 @@ rule select_mcl_network:
 
 rule cluster_network:
     input:
-        selected_ntwk= os.path.join(config['mcl_output_dir'], 'correlation_{r}/selected_network.mci'),
+        selected_ntwk= os.path.join('{mcl_output_dir}', 'correlation_{r}/selected_network.mci'),
     output:
-        clst= temp(os.path.join(config['mcl_output_dir'], 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.mci')),
+        clst= os.path.join('{mcl_output_dir}', 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.mci'),
     params:
         nt= config['n_threads']
     shell:
@@ -103,16 +83,16 @@ rule cluster_network:
 
 rule distance_between_clusters:
     input:
-        clst= expand(os.path.join(config['mcl_output_dir'], 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.mci'), 
+        clst= expand(os.path.join('{{mcl_output_dir}}', 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.mci'), 
                 r= config['correlation'], inflation= config['inflation'], ceilnb= config['ceilnb']),
     output:
-        dist= os.path.join(config['mcl_output_dir'], 'distance_between_clusters.tsv'),
+        dist= os.path.join('{mcl_output_dir}', 'distance_between_clusters.tsv'),
     shell:
         r"""
 cat <<'EOF' > {rule}.$$.tmp.R
 library(data.table)
 
-n_files <- strsplit('{input.clst}', ' ')
+n_files <- strsplit('{input.clst}', ' ')[[1]]
 if(length(n_files) == 1) {{
     cat('\nOnly one cluster file found - skipping distance between clusters\n\n')
     fout <- file('{output.dist}', 'w')
@@ -150,10 +130,10 @@ rm {rule}.$$.tmp.R
 
 rule dump_clusters:
     input:
-        clst= os.path.join(config['mcl_output_dir'], 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.mci'),
-        gene_dict= os.path.join(config['mcl_output_dir'], 'gene_dict.txt'),
+        clst= os.path.join('{mcl_output_dir}', 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.mci'),
+        gene_dict= os.path.join('{mcl_output_dir}', 'gene_dict.txt'),
     output:
-        clst= os.path.join(config['mcl_output_dir'], 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.tsv'),
+        clst= os.path.join('{mcl_output_dir}', 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.tsv'),
     shell:
         r"""
         mcxdump -icl {input.clst} --dump-pairs -o {output.clst} -tabr {input.gene_dict}
@@ -161,10 +141,10 @@ rule dump_clusters:
 
 rule summarise_clusters:
     input:
-        clst= expand(os.path.join(config['mcl_output_dir'], 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.tsv'), 
+        clst= expand(os.path.join('{{mcl_output_dir}}', 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.tsv'), 
                 r= config['correlation'], inflation= config['inflation'], ceilnb= config['ceilnb']),
     output:
-        smry= os.path.join(config['mcl_output_dir'], 'cluster_summary.tsv'),
+        smry= os.path.join('{mcl_output_dir}', 'cluster_summary.tsv'),
     params:
         regular_size= config['regular_size'],
         small_size= config['small_size'],

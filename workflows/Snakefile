@@ -1,13 +1,12 @@
-if config['mcl_output_dir'] == '.':
-    config['mcl_output_dir'] = ''
+cluster_files = expand('mcl/correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.tsv', 
+                r= config['correlation'], inflation= config['inflation'], ceilnb= config['ceilnb'])
 
 rule all:
     input:
-        os.path.join(config['mcl_output_dir'], 'similarity_matrix.tsv.gz'),
-        # 'vary_correlation_query.txt',
-        expand(os.path.join(config['mcl_output_dir'], 'correlation_{r}/inflation_{inflation}/ceilnb_{ceilnb}/cluster.tsv'),
-                r= config['correlation'], inflation= config['inflation'], ceilnb= config['ceilnb']),
-        os.path.join(config['mcl_output_dir'], 'cluster_summary.tsv'),
-        os.path.join(config['mcl_output_dir'], 'distance_between_clusters.tsv'),
+        'mcl/similarity_matrix.tsv.gz',
+        'mcl/cluster_summary.tsv',
+        'mcl/distance_between_clusters.tsv',
+        cluster_files,
 
 include: os.path.join(config['workflow_dir'], 'mcl.smk')
+
