@@ -48,16 +48,6 @@ rule write_similarity_matrix:
         mcxdump -imx {input.network} -tab {input.gene_dict} --dump-upper | gzip > {output.matrix}
         """
 
-# rule query_mcl_network:
-#     input:
-#         network= os.path.join('{mcl_output_dir}', 'network.mci'),
-#     output:
-#         qry= os.path.join('{mcl_output_dir}', 'vary_correlation_query.txt'),
-#     shell:
-#         r"""
-#         mcx query -imx {input.network} --vary-correlation -o {output.qry}
-#         """
-
 rule select_mcl_network:
     input:
         network= os.path.join('{mcl_output_dir}', 'network.mci'),

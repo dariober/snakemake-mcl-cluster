@@ -8,7 +8,7 @@ import urllib.request
 import filecmp
 import shutil
 
-GITHUB_REPOSITORY = "https://raw.githubusercontent.com/dariober/snakemake-mcl-cluster/9f89fc6/workflows"
+GITHUB_REPOSITORY = "https://raw.githubusercontent.com/dariober/snakemake-mcl-cluster/51167fe/workflows"
 
 def get_workflowdir(workflow_dir, download_to= None):
     """Return path workflow directory with snakemake files or download them and
